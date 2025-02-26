@@ -6,22 +6,35 @@ import { MessagesHelper } from './helpers/messages.helper';
 import { User } from 'src/user/schemas/user.schema';
 import { UserModule } from '../user/user.module';
 import { UserMessagesHelper } from 'src/user/helpers/messages.helper';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   private looger = new Logger(AuthService.name);
 
   constructor(
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly jwtService: JwtService
   ) {}
 
-  login(dto: loginDto) {
+  async login(dto: loginDto) {
     this.looger.debug('login - started');
-    if (dto.login !== 'teste@teste.com' || dto.password !== 'teste@123') {
+
+    const user = await this.userService.getUserByLoginPassword(dto.login, dto.password);
+
+    if (dto.login == null) {
       throw new BadRequestException(
         MessagesHelper.AUTH_PASSWORD_OR_LOGIN_NOT_FOUND
       );
     }
+    const tokenPayload = {email: user.email, sub: user._id};
+
+    return {
+      email: user.email,
+      name: user.name,
+      token: this.jwtService.sign(tokenPayload, {secret: process.env.USER_JWT_SECRET_KEY})
+    }
+
     return dto;
   }
   
@@ -34,7 +47,3 @@ export class AuthService {
     await this.userService.create(dto);
   }
 }
-
-// ESTOU COM PROBLEMA NESSA PARTE PAREI NO VIDEO LOGIN E CADASTRO/CADASTRO - PARTE3
-//na linha 31 no UserMessagesHelper esta faltando .REGISTER_EMAIL_FOUND ou .REGISTER_EXIST_EMAIL_ACCONT
-
